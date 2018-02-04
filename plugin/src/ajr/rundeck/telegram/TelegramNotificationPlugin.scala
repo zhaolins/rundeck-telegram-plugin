@@ -149,21 +149,21 @@ class TelegramNotificationPlugin extends NotificationPlugin {
           val telegram = new TelegramMessenger(botAuth, telegramAPi, myHttp)
           val (code, response) = telegram.sendMessage(chat, message)
           val ok = resultOk(code)
-          if (ok) {
-            println("Telegram mesage sent")
-            if (get[String]("includeJobLog", config, "false").toBoolean) {
-              getJobLog(chat, executionData, config, httpNoProxy) match {
-                case Some((log, fileName)) => 
-                  val (code, _) = telegram.sendDocument(chat, log.getBytes, fileName)
-                  resultOk(code)
-      
-                case _ =>
-                  false
-              }
-            }
-          }
-          else {
+          if (!ok) {
             System.err.println(s"Send failed: $code, $response")
+          }
+
+          if (get[String]("includeJobLog", config, "false").toBoolean) {
+            getJobLog(chat, executionData, config, httpNoProxy) match {
+              case Some((log, fileName)) =>
+                val (code, response) = telegram.sendMessage(chat, log)
+                val ok = resultOk(code)
+                if (!ok) {
+                  System.err.println(s"Log send failed: $code, $response")
+                }
+              case _ =>
+                false
+            }
           }
           
         case _ =>
