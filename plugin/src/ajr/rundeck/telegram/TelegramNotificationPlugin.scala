@@ -142,28 +142,24 @@ class TelegramNotificationPlugin extends NotificationPlugin {
       val templatePath = get[String]("templatePath", config, "")
       val templateProject = get[String]("templateProject", config, "")
       
-      val message = buildMessage(executionData)
+      var message = buildMessage(executionData)
       
       (botAuthO, chatO) match {
         case (Some(botAuth), Some(chat)) =>
           val telegram = new TelegramMessenger(botAuth, telegramAPi, myHttp)
-          val (code, response) = telegram.sendMessage(chat, message)
-          val ok = resultOk(code)
-          if (!ok) {
-            System.err.println(s"Send failed: $code, $response")
-          }
 
           if (get[String]("includeJobLog", config, "false").toBoolean) {
             getJobLog(chat, executionData, config, httpNoProxy) match {
-              case Some((log, fileName)) =>
-                val (code, response) = telegram.sendMessage(chat, log)
-                val ok = resultOk(code)
-                if (!ok) {
-                  System.err.println(s"Log send failed: $code, $response")
-                }
+              case Some((log, _)) =>
+                message = message + log
               case _ =>
-                false
+                System.err.println(s"No log found")
             }
+          }
+
+          val (code, response) = telegram.sendMessage(chat, message)
+          if (!resultOk(code)) {
+            System.err.println(s"Telegram message send failed: $code, $response")
           }
           
         case _ =>
